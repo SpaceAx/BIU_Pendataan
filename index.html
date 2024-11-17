@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Pendataan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f7fc;
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            max-width: 100%;
+            width: 90%;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        form label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 14px;
+        }
+        form input[type="text"], 
+        form input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        form input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+    <script>
+        let data = [];
+
+        // Load data from localStorage on page load
+        window.onload = function () {
+            const savedData = localStorage.getItem('dataPendataan');
+            if (savedData) {
+                data = JSON.parse(savedData);
+                updateTable();
+            }
+        };
+
+        function addData() {
+            const nama = document.getElementById('nama').value;
+            const tanggalPembayaran = document.getElementById('tanggalPembayaran').value;
+            const pembayaran = document.getElementById('pembayaran').checked ? "Lunas" : "Belum Lunas";
+            const materi = document.getElementById('materi').value;
+
+            if (!nama || !tanggalPembayaran || !materi) {
+                alert("Harap isi semua kolom!");
+                return;
+            }
+
+            data.push({ nama, tanggalPembayaran, pembayaran, materi });
+            saveData();
+            updateTable();
+            clearForm();
+        }
+
+        function deleteData(index) {
+            if (confirm("Apakah Anda yakin ingin menghapus data ini?")) {
+                data.splice(index, 1); // Remove data by index
+                saveData();
+                updateTable();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('dataPendataan', JSON.stringify(data));
+        }
+
+        function updateTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            data.forEach((item, index) => {
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.nama}</td>
+                        <td>${item.tanggalPembayaran}</td>
+                        <td>${item.pembayaran}</td>
+                        <td>${item.materi}</td>
+                        <td>
+                            <button class="button" style="background-color: red;" onclick="deleteData(${index})">Hapus</button>
+                        </td>
+                    </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('nama').value = '';
+            document.getElementById('tanggalPembayaran').value = '';
+            document.getElementById('pembayaran').checked = false;
+            document.getElementById('materi').value = '';
+        }
+
+        function exportToExcel() {
+            // Define worksheet data
+            const ws_data = [
+                ["No", "Nama", "Tanggal Pembayaran", "Status Pembayaran", "Materi"],
+                ...data.map((item, index) => [
+                    index + 1,
+                    item.nama,
+                    item.tanggalPembayaran,
+                    item.pembayaran,
+                    item.materi
+                ])
+            ];
+
+            // Create workbook and worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+            // Adjust column widths for better readability
+            const colWidths = [
+                { wpx: 50 },  // No
+                { wpx: 200 }, // Nama
+                { wpx: 150 }, // Tanggal Pembayaran
+                { wpx: 150 }, // Status Pembayaran
+                { wpx: 200 }  // Materi
+            ];
+            ws['!cols'] = colWidths;
+
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Data Pendataan");
+
+            // Generate Excel file and create download link
+            const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([wbout], { type: "application/octet-stream" });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "data_pendataan.xlsx";
+            link.click();
+        }
+    </script>
+</head>
+<body>
+    <header>Form Pendataan</header>
+    <div class="container">
+        <form onsubmit="event.preventDefault(); addData();">
+            <label for="nama">Nama:</label>
+            <input type="text" id="nama" name="nama" placeholder="Masukkan nama">
+
+            <label for="tanggalPembayaran">Tanggal Pembayaran:</label>
+            <input type="date" id="tanggalPembayaran" name="tanggalPembayaran">
+
+            <label for="pembayaran">
+                <input type="checkbox" id="pembayaran" name="pembayaran"> Lunas
+            </label>
+
+            <label for="materi">Materi Hari Ini:</label>
+            <input type="text" id="materi" name="materi" placeholder="Masukkan materi">
+
+            <button type="submit" class="button">Tambah Data</button>
+        </form>
+
+        <h2>Data Pendataan</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama</th>
+                    <th>Tanggal Pembayaran</th>
+                    <th>Status Pembayaran</th>
+                    <th>Materi</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+
+        <button class="button" onclick="exportToExcel()">Download Excel</button>
+    </div>
+</body>
+</html>
